@@ -33,6 +33,52 @@
     );
   }
 
+  function looksSensitivePathSegment(rawSegment) {
+    if (!rawSegment) {
+      return false;
+    }
+
+    let segment = String(rawSegment);
+
+    try {
+      segment = decodeURIComponent(segment);
+    } catch {
+      // Keep the encoded form when it is not valid percent-encoding.
+    }
+
+    if (
+      /^eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}$/.test(
+        segment
+      )
+    ) {
+      return true;
+    }
+
+    if (/^[a-f0-9]{24,}$/i.test(segment)) {
+      return true;
+    }
+
+    if (
+      segment.length >= 40 &&
+      /^[A-Za-z0-9_-]+$/.test(segment) &&
+      /[A-Za-z]/.test(segment) &&
+      /\d/.test(segment)
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
+  function sanitizePathname(pathname) {
+    return String(pathname || "")
+      .split("/")
+      .map((segment) =>
+        looksSensitivePathSegment(segment) ? ":redacted" : segment
+      )
+      .join("/");
+  }
+
   function sanitizeUrl(value, baseUrl) {
     if (!value) {
       return null;
@@ -64,11 +110,12 @@
       }
 
       const queryKeys = Array.from(new Set(Array.from(parsed.searchParams.keys())));
+      const pathname = sanitizePathname(parsed.pathname);
 
       return {
-        url: parsed.origin + parsed.pathname,
+        url: parsed.origin + pathname,
         origin: parsed.origin,
-        pathname: parsed.pathname,
+        pathname,
         queryKeys,
         temporarySignals: temporarySignals(queryKeys),
         protocol: parsed.protocol

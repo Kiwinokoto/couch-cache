@@ -73,7 +73,7 @@ const classifierSource = fs.readFileSync(
   path.join(extensionRoot, "core/classifier.js"),
   "utf8"
 );
-const sandbox = { URL };
+const sandbox = { URL, decodeURIComponent };
 sandbox.globalThis = sandbox;
 vm.runInNewContext(classifierSource, sandbox, {
   filename: "core/classifier.js"
@@ -96,6 +96,16 @@ assert.deepEqual(
   Array.from(redacted.temporarySignals),
   ["token", "expires"]
 );
+
+const pathSecret = "abcdef0123456789abcdef0123456789";
+const pathRedacted = classifier.sanitizeUrl(
+  "https://cdn.example.test/signed/" + pathSecret + "/master.m3u8"
+);
+assert.equal(
+  pathRedacted.url,
+  "https://cdn.example.test/signed/:redacted/master.m3u8"
+);
+assert.equal(JSON.stringify(pathRedacted).includes(pathSecret), false);
 
 assert.equal(classifier.classifyMedia(redacted, ""), "hls_manifest");
 assert.equal(

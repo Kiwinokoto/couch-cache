@@ -16,7 +16,7 @@ Do not paste or commit:
 - private account URLs;
 - downloaded video.
 
-The CouchCache report strips query values automatically, but still review an export before publishing it.
+The CouchCache report strips query values and masks common high-entropy token-like path segments automatically, but still review an export before publishing it.
 
 ## 1. Baseline page
 

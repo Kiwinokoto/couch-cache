@@ -29,7 +29,7 @@ The unpacked browser extension can be run manually on an episode page. It invent
 - MPEG-DASH manifests and CMAF-style segments;
 - Media Source Extensions MIME types observed after the probe starts;
 - EME requests and encrypted media events;
-- likely temporary/signed URL parameter names, without storing their values;
+- likely temporary/signed URL parameter names, with query values and high-entropy path tokens redacted;
 - generic next-episode link candidates;
 - a small sample of relevant performance/network evidence.
 

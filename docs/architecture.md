@@ -40,7 +40,7 @@ Reads browser-visible state without altering the player:
 - generic navigation candidates;
 - events sent by the page-world probe.
 
-All URLs are sanitized before persistence. Query parameter values and fragments are discarded.
+All URLs are sanitized before persistence. Query values/fragments are discarded and common high-entropy token-like path segments are replaced with a redaction marker.
 
 ### Page-world probe
 
