@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "CouchCache Analyzer",
+  "version": "0.1.0",
+  "description": "Analyze browser video players for non-DRM CouchCache compatibility.",
+  "minimum_chrome_version": "102",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "action": {
+    "default_title": "CouchCache Analyzer",
+    "default_popup": "popup/popup.html"
+  }
+}

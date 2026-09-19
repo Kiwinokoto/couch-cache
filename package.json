@@ -1,0 +1,12 @@
+{
+  "name": "couch-cache",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Compatibility analyzer for the CouchCache browser experiment.",
+  "scripts": {
+    "test": "node scripts/check.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
