@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CouchCache Analyzer</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>CouchCache</h1>
+      <p>Compatibility analyzer — no video download.</p>
+    </header>
+
+    <div class="actions">
+      <button id="analyze" class="primary">Analyze this tab</button>
+      <button id="refresh">Refresh report</button>
+      <button id="copy" disabled>Copy JSON</button>
+    </div>
+
+    <p id="status" class="status" aria-live="polite">
+      Open an episode, analyze, then let it play for 20-30 seconds.
+    </p>
+
+    <section id="summary" hidden>
+      <dl>
+        <div><dt>Player</dt><dd id="player"></dd></div>
+        <div><dt>Media</dt><dd id="media"></dd></div>
+        <div><dt>DRM</dt><dd id="drm"></dd></div>
+        <div><dt>URL lifetime</dt><dd id="temporary"></dd></div>
+        <div><dt>Next episode</dt><dd id="next"></dd></div>
+        <div><dt>Cache candidate</dt><dd id="cache"></dd></div>
+        <div><dt>Difficulty</dt><dd id="difficulty"></dd></div>
+        <div><dt>Observed transfer</dt><dd id="transfer"></dd></div>
+      </dl>
+      <p class="hint">“Not observed” is not proof of absence. Refresh after playback creates more network/MSE/EME evidence.</p>
+    </section>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>
