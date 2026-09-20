@@ -11,6 +11,7 @@ async function injectAnalyzer(tabId) {
     files: [
       "core/classifier.js",
       "adapters/registry.js",
+      "adapters/kissasia.js",
       "content/collector.js"
     ]
   });
@@ -18,7 +19,10 @@ async function injectAnalyzer(tabId) {
   await chrome.scripting.executeScript({
     target: { tabId },
     world: "MAIN",
-    files: ["content/page-probe.js"]
+    files: [
+      "core/dramacool-player.js",
+      "content/page-probe.js"
+    ]
   });
 }
 
