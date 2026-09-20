@@ -31,6 +31,7 @@ The unpacked browser extension can be run manually on an episode page. It invent
 - EME requests and encrypted media events;
 - likely temporary/signed URL parameter names, with query values and high-entropy path tokens redacted;
 - generic next-episode link candidates;
+- sanitized site-player structure when a narrow adapter exists;
 - a small sample of relevant performance/network evidence.
 
 It produces a local JSON report and a preliminary compatibility summary.
@@ -87,9 +88,9 @@ Use docs/compatibility-template.md. Do not commit live signed URLs or credential
 
 ~~~text
 extension/
-  adapters/          generic adapter registry; site adapters come later
+  adapters/          generic + narrowly scoped site adapters
   content/           DOM/network collector + page-world probe
-  core/              protocol classification and URL redaction
+  core/              protocol classification, URL redaction, safe player parsers
   popup/             small analyzer UI
   manifest.json
   service-worker.js
@@ -98,6 +99,7 @@ docs/
   architecture.md
   site-analysis.md
   compatibility-template.md
+  sites/              sanitized compatibility studies
 
 scripts/check.mjs     zero-dependency validation
 BACKLOG.md
@@ -111,8 +113,10 @@ No npm dependencies are required.
 npm test
 ~~~
 
-The check validates the manifest, JavaScript syntax, URL redaction, media classification, and a few safety invariants.
+The check validates the manifest, JavaScript syntax, URL redaction, media classification, safe site-player parsing, and a few safety invariants.
 
 ## Status
 
-The repository contains no site-specific assumptions yet. The first real compatibility work starts when we have the exact domains/episode URLs used in practice.
+The first structural compatibility study is documented for kissasia.co / Perfect Crown. It exposes an ordered direct-MP4 playlist with separate WebVTT subtitles, making it a promising V1 candidate. The analyzer now has a narrow KissAsia adapter that records only sanitized playlist structure.
+
+A real-browser pass is still required for response size, byte ranges, CORS/session behavior, URL lifetime and storage/replay feasibility before any media prefetch is implemented.

@@ -11,7 +11,9 @@ const requiredFiles = [
   "manifest.json",
   "service-worker.js",
   "core/classifier.js",
+  "core/dramacool-player.js",
   "adapters/registry.js",
+  "adapters/kissasia.js",
   "content/collector.js",
   "content/page-probe.js",
   "popup/popup.html",
@@ -44,7 +46,9 @@ assert.ok(
 const javascriptFiles = [
   "service-worker.js",
   "core/classifier.js",
+  "core/dramacool-player.js",
   "adapters/registry.js",
+  "adapters/kissasia.js",
   "content/collector.js",
   "content/page-probe.js",
   "popup/popup.js"
@@ -129,5 +133,71 @@ assert.equal(
   ),
   "mse_blob"
 );
+
+const dramacoolSource = fs.readFileSync(
+  path.join(extensionRoot, "core/dramacool-player.js"),
+  "utf8"
+);
+vm.runInNewContext(dramacoolSource, sandbox, {
+  filename: "core/dramacool-player.js"
+});
+
+const parser = sandbox.CouchCacheDramacoolPlayer;
+assert.ok(parser, "Dramacool player parser should install itself.");
+
+const syntheticSecret = "SHOULD_NOT_LEAK";
+const playerSummary = parser.summarize({
+  source: "blogger",
+  playerDataEndpoint:
+    "https://site.example.test/wp-json/player-data?post=42",
+  playerData: {
+    source: "blogger",
+    html:
+      "https://cdn.example.test/private/episode-1.mp4?token=" +
+      syntheticSecret +
+      "|English,French|\n" +
+      "https://subs.example.test/episode-1.en.vtt,\n" +
+      "https://subs.example.test/episode-1.fr.vtt;\n" +
+      "https://cdn.example.test/private/episode-2.mp4|English|\n" +
+      "https://subs.example.test/episode-2.en.vtt;\n" +
+      '<img src="https://images.example.test/poster.jpg">'
+  },
+  settings: {
+    playerId: "kisskh",
+    useJw: true,
+    trackAccess: [],
+    hls: {
+      libraryUrl: "https://cdn.example.test/hls.js"
+    }
+  }
+});
+
+assert.equal(playerSummary.episodeCount, 2);
+assert.equal(playerSummary.orderedPlaylist, true);
+assert.deepEqual(
+  Array.from(playerSummary.mediaFamilies),
+  ["direct_mp4"]
+);
+assert.deepEqual(
+  Array.from(playerSummary.mediaOrigins),
+  ["https://cdn.example.test"]
+);
+assert.deepEqual(
+  Array.from(playerSummary.mediaQueryKeys),
+  ["token"]
+);
+assert.equal(playerSummary.totalSubtitleTracks, 3);
+assert.deepEqual(
+  Array.from(playerSummary.subtitleLanguages),
+  ["English", "French"]
+);
+assert.deepEqual(
+  Array.from(playerSummary.subtitleOrigins),
+  ["https://subs.example.test"]
+);
+assert.equal(playerSummary.protectedTrackConfigPresent, false);
+assert.equal(JSON.stringify(playerSummary).includes(syntheticSecret), false);
+assert.equal(JSON.stringify(playerSummary).includes("episode-1.mp4"), false);
+assert.equal(JSON.stringify(playerSummary).includes("episode-1.en.vtt"), false);
 
 console.log("CouchCache checks passed.");

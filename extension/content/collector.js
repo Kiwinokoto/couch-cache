@@ -12,11 +12,21 @@
     return;
   }
 
+  const ALLOWED_PLAYER_MEDIA_KINDS = new Set([
+    "direct_mp4",
+    "direct_webm",
+    "hls_manifest",
+    "dash_manifest",
+    "iframe",
+    "unknown"
+  ]);
+
   const state = {
     network: [],
     mseTypes: [],
     keySystems: [],
     encryptedEvents: [],
+    playerConfig: null,
     probeStatus: null,
     publishTimer: null
   };
@@ -34,6 +44,136 @@
 
   function safeMediaUrl(value) {
     return C.sanitizeUrl(value, location.href);
+  }
+
+  function sanitizeStringList(values, limit, maxLength) {
+    if (!Array.isArray(values)) {
+      return [];
+    }
+
+    return Array.from(
+      new Set(
+        values
+          .slice(0, limit)
+          .map((value) => C.sanitizeText(value, maxLength))
+          .filter(Boolean)
+      )
+    );
+  }
+
+  function sanitizeOrigin(value) {
+    const safe = C.sanitizeUrl(value, location.href);
+    return safe && safe.origin ? safe.origin : null;
+  }
+
+  function sanitizePlayerConfig(payload) {
+    if (!payload || typeof payload !== "object" || !payload.detected) {
+      return null;
+    }
+
+    const episodes = Array.isArray(payload.episodes)
+      ? payload.episodes.slice(0, 100).map((episode, index) => ({
+          episode:
+            Number.isInteger(episode && episode.episode) &&
+            episode.episode > 0
+              ? episode.episode
+              : index + 1,
+          mediaFamily:
+            episode &&
+            ALLOWED_PLAYER_MEDIA_KINDS.has(episode.mediaFamily)
+              ? episode.mediaFamily
+              : "unknown",
+          mediaOrigin: sanitizeOrigin(episode && episode.mediaOrigin),
+          mediaExtension: C.sanitizeText(
+            episode && episode.mediaExtension,
+            12
+          ),
+          queryKeys: sanitizeStringList(
+            episode && episode.queryKeys,
+            30,
+            80
+          ),
+          subtitleCount: Math.max(
+            0,
+            Math.min(100, Number(episode && episode.subtitleCount) || 0)
+          ),
+          subtitleOrigins: sanitizeStringList(
+            episode && episode.subtitleOrigins,
+            20,
+            200
+          )
+            .map(sanitizeOrigin)
+            .filter(Boolean),
+          subtitleFormats: sanitizeStringList(
+            episode && episode.subtitleFormats,
+            20,
+            20
+          ),
+          subtitleLanguages: sanitizeStringList(
+            episode && episode.subtitleLanguages,
+            40,
+            40
+          )
+        }))
+      : [];
+
+    return {
+      detected: true,
+      source: C.sanitizeText(payload.source, 60),
+      playerId: C.sanitizeText(payload.playerId, 60),
+      useJw: Boolean(payload.useJw),
+      hlsLibraryConfigured: Boolean(payload.hlsLibraryConfigured),
+      playerDataEndpointOrigin: sanitizeOrigin(
+        payload.playerDataEndpointOrigin
+      ),
+      episodeCount: Math.max(
+        0,
+        Math.min(1000, Number(payload.episodeCount) || episodes.length)
+      ),
+      orderedPlaylist: Boolean(payload.orderedPlaylist),
+      mediaFamilies: sanitizeStringList(
+        payload.mediaFamilies,
+        10,
+        40
+      ).filter((item) => ALLOWED_PLAYER_MEDIA_KINDS.has(item)),
+      mediaOrigins: sanitizeStringList(
+        payload.mediaOrigins,
+        20,
+        200
+      )
+        .map(sanitizeOrigin)
+        .filter(Boolean),
+      mediaQueryKeys: sanitizeStringList(
+        payload.mediaQueryKeys,
+        40,
+        80
+      ),
+      subtitleLanguages: sanitizeStringList(
+        payload.subtitleLanguages,
+        60,
+        40
+      ),
+      subtitleOrigins: sanitizeStringList(
+        payload.subtitleOrigins,
+        20,
+        200
+      )
+        .map(sanitizeOrigin)
+        .filter(Boolean),
+      subtitleFormats: sanitizeStringList(
+        payload.subtitleFormats,
+        20,
+        20
+      ),
+      totalSubtitleTracks: Math.max(
+        0,
+        Math.min(10000, Number(payload.totalSubtitleTracks) || 0)
+      ),
+      protectedTrackConfigPresent: Boolean(
+        payload.protectedTrackConfigPresent
+      ),
+      episodes
+    };
   }
 
   function collectVideos() {
@@ -152,6 +292,12 @@
         value.temporarySignals.forEach((signal) => signals.add(signal));
       }
 
+      if (Array.isArray(value.queryKeys)) {
+        C.temporarySignals(value.queryKeys).forEach((signal) =>
+          signals.add(signal)
+        );
+      }
+
       if (typeof value === "object") {
         Object.values(value).forEach(visit);
       }
@@ -170,10 +316,16 @@
     let adapterEvidence = { nextEpisodeCandidates: [] };
     try {
       adapterEvidence =
-        adapter.inspect(document, {
-          sanitizeUrl: C.sanitizeUrl,
-          sanitizeText: C.sanitizeText
-        }) || adapterEvidence;
+        adapter.inspect(
+          document,
+          {
+            sanitizeUrl: C.sanitizeUrl,
+            sanitizeText: C.sanitizeText
+          },
+          {
+            playerConfig: state.playerConfig
+          }
+        ) || adapterEvidence;
     } catch {
       adapterEvidence = {
         nextEpisodeCandidates: [],
@@ -203,6 +355,10 @@
       mediaKinds.push(event.kind);
     }
 
+    if (state.playerConfig) {
+      mediaKinds.push(...state.playerConfig.mediaFamilies);
+    }
+
     if (state.mseTypes.length > 0) {
       mediaKinds.push("mse_blob");
     }
@@ -220,12 +376,17 @@
       videos,
       iframes,
       resources,
-      state.network
+      state.network,
+      state.playerConfig
     ]);
 
     let player = "unknown";
     if (hasBlob || state.mseTypes.length > 0) {
       player = "HTMLMediaElement + Media Source Extensions likely";
+    } else if (state.playerConfig && state.playerConfig.useJw) {
+      player = "JW Player / HTML5 (site playlist config)";
+    } else if (state.playerConfig) {
+      player = "HTML5/site playlist config";
     } else if (videos.length > 0) {
       player = "HTMLMediaElement";
     } else if (iframes.length > 0) {
@@ -254,6 +415,11 @@
       0
     );
 
+    const nextEpisodeDetected =
+      adapterEvidence.nextEpisodeDetectable === true ||
+      (Array.isArray(adapterEvidence.nextEpisodeCandidates) &&
+        adapterEvidence.nextEpisodeCandidates.length > 0);
+
     return {
       schemaVersion: 1,
       generatedAt: new Date().toISOString(),
@@ -272,11 +438,9 @@
           temporarySignals.length > 0
             ? "possible: " + temporarySignals.join(", ")
             : "not indicated by query-key names",
-        nextEpisodeDetectable:
-          Array.isArray(adapterEvidence.nextEpisodeCandidates) &&
-          adapterEvidence.nextEpisodeCandidates.length > 0
-            ? "candidate(s) found"
-            : "not detected generically",
+        nextEpisodeDetectable: nextEpisodeDetected
+          ? "yes"
+          : "not detected generically",
         cacheBrowserPossible,
         difficulty,
         sessionCookies: "unknown (cookie values are not inspected)",
@@ -292,7 +456,8 @@
           network: state.network,
           mseTypes: state.mseTypes,
           keySystems: state.keySystems,
-          encryptedEvents: state.encryptedEvents
+          encryptedEvents: state.encryptedEvents,
+          playerConfig: state.playerConfig
         }
       }
     };
@@ -347,7 +512,11 @@
 
         item.kind = C.classifyMedia(item.url, item.contentType);
 
-        if (item.kind !== "unknown" || item.contentType.startsWith("video/") || item.contentType.startsWith("audio/")) {
+        if (
+          item.kind !== "unknown" ||
+          item.contentType.startsWith("video/") ||
+          item.contentType.startsWith("audio/")
+        ) {
           uniquePush(
             state.network,
             item,
@@ -392,6 +561,14 @@
         (value) => value.initDataType,
         10
       );
+    }
+
+    if (message.type === "player-config") {
+      const safePlayerConfig = sanitizePlayerConfig(payload);
+
+      if (safePlayerConfig) {
+        state.playerConfig = safePlayerConfig;
+      }
     }
 
     if (message.type === "probe-status") {
