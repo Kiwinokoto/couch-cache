@@ -4,7 +4,29 @@ The backlog is intentionally ordered around evidence. Do not implement the multi
 
 ## P0 - first real sites
 
-Waiting for exact domains/episode URLs.
+### kissasia.co — Perfect Crown
+
+Structural study completed 2026-09-20:
+
+- direct MP4 playlist detected in page player configuration;
+- 12 ordered episode entries;
+- separate WebVTT subtitles;
+- next episode is directly derivable from playlist order;
+- DRM/EME not observed in this source-level pass;
+- site-specific structural adapter added without persisting media URLs.
+
+Still required before any prefetch implementation:
+
+- run the extension in a real Chromium tab on the title;
+- measure one episode's response metadata and approximate size;
+- verify byte-range/resume behavior;
+- verify extension-context CORS and normal browser credential requirements;
+- re-check URL lifetime after reload/delay;
+- confirm whether alternate qualities are available.
+
+See docs/sites/kissasia.co-perfect-crown.md.
+
+### Additional sites
 
 For each site:
 
@@ -23,7 +45,7 @@ For each site:
 
 After the first real site reveals what is missing:
 
-- add a narrowly scoped site adapter;
+- run and validate the KissAsia adapter in a real browser;
 - add optional iframe-origin analysis when required;
 - add optional webRequest diagnostics only if Resource Timing/page instrumentation is insufficient;
 - improve report confidence labels;
@@ -34,7 +56,7 @@ After the first real site reveals what is missing:
 Only for a confirmed non-DRM site:
 
 - request the minimum host permission;
-- fetch one harmless manifest or a small media segment;
+- fetch one harmless manifest or a small media segment, or use response metadata for a direct file;
 - record status/content type/size only;
 - verify credential behavior;
 - verify retry/backoff behavior;
