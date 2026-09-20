@@ -16,8 +16,27 @@
     }
   }
 
+  function emitPlayerConfig() {
+    try {
+      const parser = root.CouchCacheDramacoolPlayer;
+
+      if (!parser || typeof parser.summarize !== "function") {
+        return;
+      }
+
+      const summary = parser.summarize(root.DramacoolPlayerBoot);
+
+      if (summary) {
+        emit("player-config", summary);
+      }
+    } catch {
+      // Site-specific diagnostics are best effort only.
+    }
+  }
+
   if (root.__couchCachePageProbeInstalled) {
     emit("probe-status", { installed: true, reused: true });
+    emitPlayerConfig();
     return;
   }
 
@@ -167,4 +186,15 @@
   );
 
   emit("probe-status", { installed: true, reused: false });
+  emitPlayerConfig();
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", emitPlayerConfig, {
+      once: true
+    });
+  } else {
+    root.setTimeout(emitPlayerConfig, 0);
+  }
+
+  root.setTimeout(emitPlayerConfig, 1000);
 })(window);
